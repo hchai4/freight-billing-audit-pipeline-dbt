@@ -1,1 +1,4 @@
 psycopg2-binary>=2.9
+
+dbt-core <2.0.0
+dbt-postgres <2.0.0

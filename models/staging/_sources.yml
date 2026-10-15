@@ -41,6 +41,10 @@ sources:
             description: Shipping facility ZIP, used for zone resolution.
           - name: dest_zip
             description: Delivery ZIP, used for zone resolution.
+          - name: carrier_code
+            description: Carrier that will haul the package; defaults to UPS in this audit.
+          - name: origin_warehouse
+            description: Shipping facility code recorded by the WMS.
           - name: dest_address_type
             description: COMMERCIAL or RESIDENTIAL, from the order management system.
           - name: dest_address_cass_validated
@@ -86,6 +90,8 @@ sources:
             description: Service level the carrier claims to have provided.
           - name: zone_billed
             description: Rate zone the carrier applied.
+          - name: dest_zip
+            description: Destination ZIP printed on the EDI invoice.
           - name: delivery_timestamp
             description: Carrier-reported delivery scan; the clock stop for SLA transit.
           - name: invoice_date
@@ -122,6 +128,8 @@ sources:
           - name: invoice_date
           - name: service_level_billed
           - name: zone_billed
+          - name: dest_zip
+            description: Destination ZIP extracted from the portal document.
           - name: delivery_timestamp
 
       - name: raw_carrier_accessorial_charges
@@ -142,6 +150,9 @@ sources:
               - not_null
           - name: source_channel
             description: Channel that delivered this fee line.
+          - name: charge_line_number
+            description: Position of this fee on the invoice charge group.
+          - name: invoice_date
           - name: accessorial_code
             description: Carrier fee code, e.g. RESIDENTIAL or ADDRESS_CORRECTION.
             tests:
