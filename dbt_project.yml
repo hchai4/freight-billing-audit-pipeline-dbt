@@ -5,6 +5,7 @@ config-version: 2
 profile: logistics_billing_audit
 
 model-paths: ["models"]
+snapshot-paths: ["snapshots"]
 seed-paths: ["seeds"]
 macro-paths: ["macros"]
 test-paths: ["tests"]
@@ -56,3 +57,9 @@ models:
 seeds:
   logistics_billing_audit:
     +schema: contract
+
+snapshots:
+  logistics_billing_audit:
+    +target_schema: snapshots
+    +strategy: check
+    +updated_at: null

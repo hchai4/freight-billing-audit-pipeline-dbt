@@ -68,6 +68,8 @@ Gate 1 is retained as an explanatory reason code, but its dollars are attributed
 │   ├── carrier_rate_card.csv
 │   ├── carrier_service_levels.csv
 │   └── carrier_zone_matrix.csv
+├── snapshots/                   # SCD Type 2 history of the rate card
+│   └── snap_carrier_rate_card.sql
 ├── models/
 │   ├── staging/                 # Typed and standardized source relations
 │   ├── intermediate/            # Physical, contract, accessorial, and billing logic
@@ -120,7 +122,7 @@ export POSTGRES_PASSWORD=postgres
 export POSTGRES_DB=logistics_db
 ```
 
-The dbt profile targets the `analytics` schema and configures four threads. Models are organized into `staging`, `intermediate`, and `marts` schemas; seeds are loaded into the `contract` schema according to `dbt_project.yml`.
+The dbt profile targets the `analytics` schema and configures four threads. Models are organized into `staging`, `intermediate`, and `marts` schemas; seeds are loaded into the `contract` schema; snapshots land in `analytics_snapshots`.
 
 ### 3. Load contract seeds
 
@@ -130,7 +132,31 @@ Contractual data is version-controlled in `seeds/` because tariffs and contract 
 dbt seed --profiles-dir .
 ```
 
-### 4. Verify the connection and build the project
+### 4. Snapshot the rate card (SCD Type 2)
+
+`dbt seed` overwrites `analytics_contract.carrier_rate_card`. Gate 2 still reads that current table. History of each rate-card cell lives in `analytics_snapshots.snap_carrier_rate_card`.
+
+Grain is one UPS service / zone / weight-tier cell. The snapshot uses `strategy='check'` on `contract_base_rate_usd`, `effective_date`, and `expiration_date`. When any of those change, dbt closes the old row (`dbt_valid_to`) and inserts a new current row (`dbt_valid_to` is null). `invalidate_hard_deletes` closes a cell that disappears from the seed instead of deleting it.
+
+`dbt_valid_from` / `dbt_valid_to` are the times dbt **saw** the change (the snapshot run), not the contract window in the CSV. `effective_date` / `expiration_date` remain the legal window a shipment should be rated against.
+
+```bash
+dbt snapshot --profiles-dir .
+```
+
+If the Postgres client is not on your PATH, query through the Compose container from the sibling app repo:
+
+```bash
+docker exec logistics-billing-anomaly-agent-postgres-1 \
+  psql -U postgres -d logistics_db \
+  -c "SELECT COUNT(*) AS rows,
+             COUNT(*) FILTER (WHERE dbt_valid_to IS NULL) AS current_rows
+      FROM analytics_snapshots.snap_carrier_rate_card;"
+```
+
+After a second snapshot where one CSV rate changed, that key has two rows: the old amount with a non-null `dbt_valid_to`, and the new amount still current. `int_contract_expectations` still `ref('carrier_rate_card')`. A later join onto the snapshot for scan date `D` would be `D >= dbt_valid_from::date AND (dbt_valid_to IS NULL OR D < dbt_valid_to::date)`.
+
+### 5. Verify the connection and build the project
 
 ```bash
 dbt debug --profiles-dir .
@@ -196,7 +222,7 @@ A failing custom test returns the offending records so the source data or audit 
 - **Do not trust the invoice for evidence used to challenge the invoice.** Zones, weights, rate tiers, and SLA clocks are derived from physical and contractual data wherever possible.
 - **Keep duplicate billing visible.** EDI and portal records are deliberately unioned without deduplication so cross-channel billing becomes an auditable Gate 4 signal.
 - **Preserve un-invoiced shipments.** The physical shipment is the spine of the reconciliation, so missing invoices surface as `AWAITING_INVOICE` rather than disappearing.
-- **Version contract truth.** Changes to seed tariffs are reviewable through Git history.
+- **Version contract truth.** Changes to seed tariffs are reviewable through Git history. `snap_carrier_rate_card` keeps the same cell's prior dollar amount after the CSV is overwritten (SCD Type 2).
 - **Recover each dollar once.** Recovery attribution is reconciled between the shipment-level and anomaly-level marts.
 
 ## Development workflow
@@ -206,6 +232,7 @@ After changing SQL, YAML, seeds, or audit variables:
 ```bash
 dbt deps --profiles-dir .
 dbt seed --profiles-dir .
+dbt snapshot --profiles-dir .
 dbt build --profiles-dir .
 ```
 
