@@ -122,7 +122,7 @@ export POSTGRES_PASSWORD=postgres
 export POSTGRES_DB=logistics_db
 ```
 
-The dbt profile targets the `analytics` schema and configures four threads. Models are organized into `staging`, `intermediate`, and `marts` schemas; seeds are loaded into the `contract` schema; snapshots land in `analytics_snapshots`.
+The dbt profile targets the `analytics` schema and configures four threads. Models are organized into `staging`, `intermediate`, and `marts` schemas; seeds are loaded into the `contract` schema;  land in `analytics_`.
 
 ### 3. Load contract seeds
 
@@ -134,7 +134,7 @@ dbt seed --profiles-dir .
 
 ### 4. Snapshot the rate card (SCD Type 2)
 
-`dbt seed` overwrites `analytics_contract.carrier_rate_card`. Gate 2 still reads that current table. History of each rate-card cell lives in `analytics_snapshots.snap_carrier_rate_card`.
+`dbt seed` overwrites `analytics_contract.carrier_rate_card`. Gate 2 still reads that current table. History of each rate-card cell lives in `analytics_.snap_carrier_rate_card`.
 
 Grain is one UPS service / zone / weight-tier cell. The snapshot uses `strategy='check'` on `contract_base_rate_usd`, `effective_date`, and `expiration_date`. When any of those change, dbt closes the old row (`dbt_valid_to`) and inserts a new current row (`dbt_valid_to` is null). `invalidate_hard_deletes` closes a cell that disappears from the seed instead of deleting it.
 
@@ -151,7 +151,7 @@ docker exec logistics-billing-anomaly-agent-postgres-1 \
   psql -U postgres -d logistics_db \
   -c "SELECT COUNT(*) AS rows,
              COUNT(*) FILTER (WHERE dbt_valid_to IS NULL) AS current_rows
-      FROM analytics_snapshots.snap_carrier_rate_card;"
+      FROM snapshots.snap_carrier_rate_card;"
 ```
 
 After a second snapshot where one CSV rate changed, that key has two rows: the old amount with a non-null `dbt_valid_to`, and the new amount still current. `int_contract_expectations` still `ref('carrier_rate_card')`. A later join onto the snapshot for scan date `D` would be `D >= dbt_valid_from::date AND (dbt_valid_to IS NULL OR D < dbt_valid_to::date)`.
