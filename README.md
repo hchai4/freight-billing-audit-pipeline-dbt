@@ -1,4 +1,4 @@
-# Logistics Billing Anomaly Agent — dbt Audit Models
+# Freight Billing Audit Pipeline — dbt Audit Models
 
 A dbt project that reconciles warehouse measurements, carrier contract terms, and carrier invoice data to identify logistics billing anomalies and quantify recoverable dollars.
 
@@ -91,8 +91,8 @@ The repository includes `psycopg2-binary` in `requirements.txt`. Install the dbt
 ### 1. Clone and create an environment
 
 ```bash
-git clone https://github.com/hchai4/logistics-billing-anomaly-agent-dbt.git
-cd logistics-billing-anomaly-agent-dbt
+git clone https://github.com/hchai4/freight-billing-audit-pipeline-dbt.git
+cd freight-billing-audit-pipeline-dbt
 
 python -m venv .venv
 source .venv/bin/activate       # Windows: .venv\\Scripts\\activate
@@ -147,7 +147,7 @@ dbt snapshot --profiles-dir .
 If the Postgres client is not on your PATH, query through the Compose container from the sibling app repo:
 
 ```bash
-docker exec logistics-billing-anomaly-agent-postgres-1 \
+docker exec freight-billing-audit-pipeline-dbt-postgres-1 \
   psql -U postgres -d logistics_db \
   -c "SELECT COUNT(*) AS rows,
              COUNT(*) FILTER (WHERE dbt_valid_to IS NULL) AS current_rows

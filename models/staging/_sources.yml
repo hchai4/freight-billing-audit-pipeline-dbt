@@ -3,7 +3,7 @@ version: 2
 sources:
   - name: source_enterprise
     description: >
-      Raw landing schema owned by the logistics billing anomaly agent. Pillar 1
+      Raw landing schema owned by the freight billing audit pipeline. Pillar 1
       (physical reality) and Pillar 3 (billed reality) both land here; Pillar 2
       (contract reality) is version-controlled as dbt seeds instead, because a
       tariff is a legal document rather than an operational data feed.
