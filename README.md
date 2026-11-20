@@ -22,38 +22,6 @@ The resulting marts apply five deterministic audit gates:
 | 4 | `DUPLICATE_BILLING_COLLISION` | A shipment is billed multiple times or through multiple invoice channels. |
 | 5 | `SLA_DELIVERY_FAILURE_REFUND` | A guaranteed service shipment was delivered outside its commitment plus the grace period. |
 
-## Outputs
-
-### `fct_reconciliation_marts`
-
-A shipment-level reconciliation table with one row per `tracking_id`. It contains:
-
-- Physical measurements and the independently derived contractual billable weight
-- Contract rate, fuel, and accessorial expectations
-- Primary invoice details and totals across all invoice lines/channels
-- Independent flags and measurements for all five audit gates
-- `total_recoverable_usd`, with non-overlapping recovery attribution
-- `anomaly_codes` and `anomaly_count`
-- `audit_status` and recovery-oriented `dispute_priority`
-
-Possible audit statuses include:
-
-- `CLEAN`
-- `ANOMALY_DETECTED`
-- `AWAITING_INVOICE`
-- `UNRATEABLE_NO_TARIFF_MATCH`
-
-### `fct_billing_anomalies`
-
-A dispute-oriented table with one row per shipment per anomaly code. Each row includes:
-
-- Gate number and anomaly code
-- Recoverable dollars attributable to that finding
-- A generated `dispute_evidence` sentence containing the physical, contractual, and billed evidence needed by a dispute workflow
-- Shipment-level recovery and priority context
-
-Gate 1 is retained as an explanatory reason code, but its dollars are attributed through the resulting rate variance to avoid double recovery. Gate 5 supersedes rate and fuel recovery for the same charge because a Guaranteed Service Refund returns the transportation charge in full.
-
 ## Architecture
 
 Data flows left to right: raw sources and contract seeds are standardized in staging, combined into the three "realities" in the intermediate layer, and reconciled in the marts. The physical shipment (WMS scan) is the spine of the reconciliation.
@@ -137,6 +105,38 @@ flowchart LR
 | Staging | What does each raw feed say, typed and normalized? | `stg_*` |
 | Intermediate | What *should* have happened (physical + contract), and what *was* billed? | `int_package_physical_truth`, `int_contract_expectations`, `int_billed_accessorials`, `int_billed_charges` |
 | Marts | Where do they disagree, and how many dollars are recoverable? | `fct_reconciliation_marts`, `fct_billing_anomalies` |
+
+## Outputs
+
+### `fct_reconciliation_marts`
+
+A shipment-level reconciliation table with one row per `tracking_id`. It contains:
+
+- Physical measurements and the independently derived contractual billable weight
+- Contract rate, fuel, and accessorial expectations
+- Primary invoice details and totals across all invoice lines/channels
+- Independent flags and measurements for all five audit gates
+- `total_recoverable_usd`, with non-overlapping recovery attribution
+- `anomaly_codes` and `anomaly_count`
+- `audit_status` and recovery-oriented `dispute_priority`
+
+Possible audit statuses include:
+
+- `CLEAN`
+- `ANOMALY_DETECTED`
+- `AWAITING_INVOICE`
+- `UNRATEABLE_NO_TARIFF_MATCH`
+
+### `fct_billing_anomalies`
+
+A dispute-oriented table with one row per shipment per anomaly code. Each row includes:
+
+- Gate number and anomaly code
+- Recoverable dollars attributable to that finding
+- A generated `dispute_evidence` sentence containing the physical, contractual, and billed evidence needed by a dispute workflow
+- Shipment-level recovery and priority context
+
+Gate 1 is retained as an explanatory reason code, but its dollars are attributed through the resulting rate variance to avoid double recovery. Gate 5 supersedes rate and fuel recovery for the same charge because a Guaranteed Service Refund returns the transportation charge in full.
 
 ## Project structure
 
