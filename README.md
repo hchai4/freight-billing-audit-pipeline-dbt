@@ -54,6 +54,90 @@ A dispute-oriented table with one row per shipment per anomaly code. Each row in
 
 Gate 1 is retained as an explanatory reason code, but its dollars are attributed through the resulting rate variance to avoid double recovery. Gate 5 supersedes rate and fuel recovery for the same charge because a Guaranteed Service Refund returns the transportation charge in full.
 
+## Architecture
+
+Data flows left to right: raw sources and contract seeds are standardized in staging, combined into the three "realities" in the intermediate layer, and reconciled in the marts. The physical shipment (WMS scan) is the spine of the reconciliation.
+
+```mermaid
+flowchart LR
+    subgraph SRC["Raw sources · schema source_enterprise"]
+        R1[(raw_wms_package_scans)]
+        R2[(raw_edi_ups_invoices)]
+        R3[(raw_portal_extracted_invoices)]
+        R4[(raw_carrier_accessorial_charges)]
+    end
+
+    subgraph SEED["Contract seeds · schema contract"]
+        S1[carrier_contract_terms]
+        S2[carrier_zone_matrix]
+        S3[carrier_service_levels]
+        S4[carrier_rate_card]
+        S5[carrier_fuel_surcharge_index]
+        S6[carrier_accessorial_tariff]
+    end
+
+    subgraph STG["Staging · views"]
+        T1[stg_wms_scans]
+        T2[stg_edi_invoices]
+        T3[stg_portal_invoices]
+        T4[stg_carrier_invoices]
+        T5[stg_carrier_accessorials]
+    end
+
+    subgraph INT["Intermediate · views"]
+        I1["int_package_physical_truth<br/>(physical reality)"]
+        I2["int_contract_expectations<br/>(contract reality)"]
+        I3[int_billed_accessorials]
+        I4["int_billed_charges<br/>(billed reality)"]
+    end
+
+    subgraph MART["Marts · tables"]
+        M1["fct_reconciliation_marts<br/>1 row per tracking_id · 5 audit gates"]
+        M2["fct_billing_anomalies<br/>1 row per shipment per anomaly code"]
+    end
+
+    SNAP[["snap_carrier_rate_card<br/>SCD Type 2 history"]]
+    TESTS{{"Custom tests<br/>(tests/)"}}
+
+    R1 --> T1
+    R2 --> T2
+    R3 --> T3
+    T2 --> T4
+    T3 --> T4
+    R4 --> T5
+
+    T1 --> I1
+    S1 --> I1
+    S2 --> I1
+    S3 --> I1
+
+    I1 --> I2
+    S4 --> I2
+    S5 --> I2
+
+    T5 --> I3
+    S6 --> I3
+    T1 --> I3
+
+    T4 --> I4
+    I3 --> I4
+
+    I1 --> M1
+    I2 --> M1
+    I4 --> M1
+    M1 --> M2
+
+    S4 -.-> SNAP
+    M1 -.-> TESTS
+    M2 -.-> TESTS
+```
+
+| Layer | Question it answers | Models |
+| --- | --- | --- |
+| Staging | What does each raw feed say, typed and normalized? | `stg_*` |
+| Intermediate | What *should* have happened (physical + contract), and what *was* billed? | `int_package_physical_truth`, `int_contract_expectations`, `int_billed_accessorials`, `int_billed_charges` |
+| Marts | Where do they disagree, and how many dollars are recoverable? | `fct_reconciliation_marts`, `fct_billing_anomalies` |
+
 ## Project structure
 
 ```text
