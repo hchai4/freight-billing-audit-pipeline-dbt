@@ -1,5 +1,7 @@
 # Freight Billing Audit Pipeline — dbt Audit Models
 
+[![CI](https://github.com/hchai4/freight-billing-audit-pipeline-dbt/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/hchai4/freight-billing-audit-pipeline-dbt/actions/workflows/ci.yml)
+
 A dbt project that reconciles warehouse measurements, carrier contract terms, and carrier invoice data to identify logistics billing anomalies and quantify recoverable dollars.
 
 The project is designed for freight audit workflows where every finding should be supported by independent evidence and every recoverable dollar should be attributed exactly once.
