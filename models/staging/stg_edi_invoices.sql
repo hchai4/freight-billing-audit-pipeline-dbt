@@ -5,10 +5,20 @@
 -- names its money columns `base_rate` / `total_billed_amount`; those are aliased
 -- to the canonical names here so downstream SQL never has to care which channel
 -- a charge arrived through.
+-- A view by default. Pass --vars '{incremental_staging: true}' to load only new
+-- ids; do not enable it if the source tables are dropped and regenerated.
+{{ config(
+    materialized=('incremental' if var('incremental_staging', false) else 'view'),
+    unique_key='invoice_line_id',
+    incremental_strategy='delete+insert'
+) }}
 
 with source as (
 
     select * from {{ source('source_enterprise', 'raw_edi_ups_invoices') }}
+    {% if is_incremental() %}
+    where edi_record_id > (select max(invoice_line_id) from {{ this }})
+    {% endif %}
 
 ),
 
