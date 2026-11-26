@@ -5,9 +5,18 @@
 -- join against. Dimensional weight and billable weight are deliberately left to
 -- int_package_physical_truth, because they require the contracted divisor.
 
+{{ config(
+    materialized='incremental',
+    unique_key='package_id',
+    incremental_strategy='delete+insert'
+) }}
+
 with source as (
 
     select * from {{ source('source_enterprise', 'raw_wms_package_scans') }}
+    {% if is_incremental() %}
+    where package_id > (select max(package_id) from {{ this}})
+    {% endif %}
 
 ),
 
