@@ -43,6 +43,10 @@ vars:
   # Carrier whose contract governs this audit.
   audit_carrier_code: UPS
 
+  # Off by default: the local source tables are regenerated with the same ids, so
+  # a high-water mark would silently skip the new rows. Used by the stress test.
+  incremental_staging: false
+
 models:
   logistics_billing_audit:
     +materialized: view

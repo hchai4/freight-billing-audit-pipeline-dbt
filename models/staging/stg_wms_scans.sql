@@ -5,8 +5,10 @@
 -- join against. Dimensional weight and billable weight are deliberately left to
 -- int_package_physical_truth, because they require the contracted divisor.
 
+-- A view by default. Pass --vars '{incremental_staging: true}' to load only new
+-- ids; do not enable it if the source tables are dropped and regenerated.
 {{ config(
-    materialized='incremental',
+    materialized=('incremental' if var('incremental_staging', false) else 'view'),
     unique_key='package_id',
     incremental_strategy='delete+insert'
 ) }}
